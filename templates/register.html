@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - MochisBus</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="login-page">
+
+    <div class="login-container">
+        <div style="margin-bottom: 18px;">
+            <div style="width:64px; height:64px; background:linear-gradient(135deg,#10b981,#047857); border-radius:18px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                <i class="fa-solid fa-user-plus" style="font-size:1.6rem; color:white;"></i>
+            </div>
+        </div>
+
+        <h2 class="brand-title">Únete a MochisBus</h2>
+        <p class="subtitle">Crea tu cuenta para ver las rutas en vivo</p>
+
+        <form id="register-form">
+            <div class="input-group">
+                <label for="username">Usuario</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-user"></i>
+                    <input type="text" id="username" name="username" placeholder="Elige un usuario" required minlength="3" autocomplete="username">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="email">Correo Electrónico</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-envelope"></i>
+                    <input type="email" id="email" name="email" placeholder="tu@correo.com" required autocomplete="email">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Contraseña</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="password" name="password" placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password">
+                </div>
+            </div>
+
+            <div id="error-msg" style="display:none; background:rgba(239,68,68,0.12); color:#fc8181; border:1px solid rgba(239,68,68,0.3); padding:10px 14px; border-radius:8px; font-size:0.85rem; margin-top:8px; text-align:left;">
+                <i class="fa-solid fa-circle-exclamation" style="margin-right:6px;"></i>
+                <span id="error-text"></span>
+            </div>
+
+            <div id="success-msg" style="display:none; background:rgba(16,185,129,0.12); color:#6ee7b7; border:1px solid rgba(16,185,129,0.3); padding:10px 14px; border-radius:8px; font-size:0.85rem; margin-top:8px; text-align:left;">
+                <i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>
+                Cuenta creada. Revisa tu correo para confirmar.
+            </div>
+
+            <button type="submit" class="login-button" id="btn-register" style="background:linear-gradient(135deg,#10b981,#047857);">
+                <i class="fa-solid fa-user-plus"></i> CREAR CUENTA
+            </button>
+        </form>
+
+        <div class="links">
+            <a href="/">¿Ya tienes cuenta? <b>Inicia sesión</b></a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-register');
+            const errDiv = document.getElementById('error-msg');
+            const sucDiv = document.getElementById('success-msg');
+            errDiv.style.display = 'none';
+            sucDiv.style.display = 'none';
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creando cuenta...';
+            btn.style.background = 'linear-gradient(135deg,#374151,#1f2937)';
+
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    sucDiv.style.display = 'block';
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> ¡Listo!';
+                    setTimeout(() => window.location.href = '/', 2500);
+                } else {
+                    document.getElementById('error-text').textContent = data.message;
+                    errDiv.style.display = 'block';
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> CREAR CUENTA';
+                    btn.style.background = 'linear-gradient(135deg,#10b981,#047857)';
+                }
+            } catch (err) {
+                document.getElementById('error-text').textContent = 'Error de conexión.';
+                errDiv.style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> CREAR CUENTA';
+                btn.style.background = 'linear-gradient(135deg,#10b981,#047857)';
+            }
+        });
+    </script>
+</body>
+</html>

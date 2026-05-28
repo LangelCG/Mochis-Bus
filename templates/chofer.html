@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>App Conductor - MochisBus</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: linear-gradient(160deg, #0f1117 0%, #1a1d24 100%);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .info-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 22px 28px;
+            border-radius: 18px;
+            text-align: center;
+            margin-bottom: 36px;
+            width: 100%;
+            max-width: 340px;
+            backdrop-filter: blur(10px);
+        }
+
+        .info-card .avatar {
+            width: 56px; height: 56px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 14px;
+            font-size: 1.5rem;
+        }
+
+        h1 { margin: 0 0 6px; font-size: 1.2rem; font-weight: 700; }
+        .info-row { color: #94a3b8; font-size: 0.88rem; margin: 4px 0; }
+        .info-row strong { color: #e2e8f0; }
+
+        .ruta-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            margin-top: 8px;
+        }
+
+        #btn-estado {
+            width: 190px; height: 190px;
+            border-radius: 50%;
+            border: 4px solid rgba(255,255,255,0.1);
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: white;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            outline: none;
+        }
+
+        #btn-estado:active { transform: scale(0.94); }
+
+        .apagado {
+            background: radial-gradient(circle at 40% 40%, #7f1d1d, #450a0a);
+            box-shadow: 0 8px 32px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        .apagado:hover {
+            background: radial-gradient(circle at 40% 40%, #991b1b, #5a0f0f);
+            box-shadow: 0 12px 40px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+            transform: scale(1.04);
+        }
+
+        .encendido {
+            background: radial-gradient(circle at 40% 40%, #14532d, #052e16);
+            border-color: rgba(34, 197, 94, 0.5) !important;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+            animation: pulsoVerde 2s ease-in-out infinite;
+        }
+
+        @keyframes pulsoVerde {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4), 0 8px 32px rgba(34, 197, 94, 0.2); }
+            70% { box-shadow: 0 0 0 22px rgba(34, 197, 94, 0), 0 8px 32px rgba(34, 197, 94, 0.2); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0), 0 8px 32px rgba(34, 197, 94, 0.2); }
+        }
+
+        #status-text {
+            margin-top: 24px;
+            color: #4b5563;
+            font-size: 0.82rem;
+            text-align: center;
+            min-height: 20px;
+            letter-spacing: 0.3px;
+        }
+
+        .footer-link {
+            position: fixed;
+            bottom: 24px;
+            display: flex; gap: 20px;
+        }
+
+        .footer-link a {
+            color: #374151;
+            text-decoration: none;
+            font-size: 0.82rem;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #1f2937;
+            transition: all 0.2s;
+        }
+
+        .footer-link a:hover {
+            color: #94a3b8;
+            border-color: #374151;
+            background: rgba(255,255,255,0.03);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="info-card">
+        <div class="avatar"><i class="fa-solid fa-id-card"></i></div>
+        <h1>Perfil de Conductor</h1>
+        <p class="info-row">Usuario: <strong>{{ username }}</strong></p>
+        <div class="ruta-badge"><i class="fa-solid fa-route" style="margin-right:6px;"></i>{{ ruta }}</div>
+    </div>
+
+    <button id="btn-estado" class="apagado" onclick="alternarServicio()">
+        <i class="fa-solid fa-power-off" style="font-size:2rem;"></i>
+        <span>INICIAR</span>
+    </button>
+
+    <p id="status-text">GPS inactivo</p>
+
+    <div class="footer-link">
+        <a href="/logout"><i class="fa-solid fa-right-from-bracket" style="margin-right:6px;"></i>Salir</a>
+    </div>
+
+    <script>
+        const usuario = '{{ username }}';
+        const ruta = '{{ ruta }}';
+
+        let activo = false;
+        let watchId = null;
+
+        function alternarServicio() {
+            const btn = document.getElementById('btn-estado');
+            const status = document.getElementById('status-text');
+
+            if (!activo) {
+                if (!navigator.geolocation) return alert("Tu dispositivo no soporta GPS.");
+                activo = true;
+                btn.className = 'encendido';
+                btn.innerHTML = '<i class="fa-solid fa-route" style="font-size:2rem;"></i><span>EN RUTA</span>';
+                status.textContent = 'Obteniendo ubicación...';
+                status.style.color = '#4ade80';
+
+                watchId = navigator.geolocation.watchPosition(enviarUbicacion, errorGPS, {
+                    enableHighAccuracy: true, timeout: 10000
+                });
+            } else {
+                activo = false;
+                navigator.geolocation.clearWatch(watchId);
+                btn.className = 'apagado';
+                btn.innerHTML = '<i class="fa-solid fa-power-off" style="font-size:2rem;"></i><span>INICIAR</span>';
+                status.textContent = 'Servicio finalizado.';
+                status.style.color = '#4b5563';
+                enviarAlServidor(0, 0, false);
+            }
+        }
+
+        function enviarUbicacion(position) {
+            const { latitude: lat, longitude: lon } = position.coords;
+            const hora = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('status-text').textContent = `Transmitiendo · ${hora}`;
+            enviarAlServidor(lat, lon, true);
+        }
+
+        async function enviarAlServidor(lat, lon, estado) {
+            try {
+                await fetch('/api/actualizar_ubicacion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: usuario, ruta, lat, lon, activo: estado })
+                });
+            } catch (e) { console.error("Error GPS:", e); }
+        }
+
+        function errorGPS(err) {
+            document.getElementById('status-text').textContent = 'Error de GPS: ' + err.message;
+            document.getElementById('status-text').style.color = '#fc8181';
+        }
+    </script>
+</body>
+</html>

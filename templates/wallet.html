@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wallet - MochisBus</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <div class="header-left" onclick="history.back()" style="cursor:pointer;">
+            <button id="menu-toggle-btn">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div class="header-logo" style="margin-left:10px;">
+                <i class="fa-solid fa-wallet"></i> <span>Mi Wallet</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="theme-switch-wrapper">
+                <i class="fa-solid fa-sun" style="color:#94a3b8; font-size:0.85rem;"></i>
+                <label class="switch theme-switch">
+                    <input type="checkbox" id="dark-mode-toggle">
+                    <span class="slider round"></span>
+                </label>
+                <i class="fa-solid fa-moon" style="color:#94a3b8; font-size:0.85rem;"></i>
+            </div>
+            <div class="user-info-display">
+                <span class="user-name-txt">{{ username }}</span>
+                <span class="user-role-txt">{{ role }}</span>
+            </div>
+            <a href="/logout" style="color:#fc8181;font-size:0.82rem;font-weight:600;text-decoration:none;border:1px solid #fc8181;padding:5px 10px;border-radius:7px;transition:all 0.2s;white-space:nowrap;"
+               onmouseover="this.style.background='#fc8181';this.style.color='white'"
+               onmouseout="this.style.background='transparent';this.style.color='#fc8181'">
+                <i class="fa-solid fa-right-from-bracket"></i> Salir
+            </a>
+        </div>
+    </header>
+
+    <div class="wallet-container">
+
+        <!-- TARJETA DE SALDO -->
+        <div class="wallet-saldo-card">
+            <div class="wallet-saldo-label">
+                <i class="fa-solid fa-wallet" style="margin-right:6px;"></i> Saldo disponible
+            </div>
+            <div class="wallet-saldo-amount" id="saldo-display">
+                <span>$</span><span id="saldo-numero">...</span>
+            </div>
+            <div class="wallet-user-badge">
+                <i class="fa-solid fa-circle-user"></i>
+                <span>{{ username }}</span>
+
+            </div>
+        </div>
+
+        <!-- ACCIONES RÁPIDAS -->
+        <div class="wallet-card" style="padding:16px;">
+            <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:12px;">
+                Acciones
+            </div>
+            <div class="wallet-actions">
+                <button class="wallet-action-btn" onclick="abrirModalMetodo()">
+                    <i class="fa-solid fa-circle-plus"></i>
+                    <span>Agregar Saldo</span>
+                </button>
+                <button class="wallet-action-btn" onclick="abrirModalNFC()">
+                    <i class="fa-solid fa-nfc-signal" id="nfc-icon"></i>
+                    <span>Pagar NFC</span>
+                </button>
+                <button class="wallet-action-btn" onclick="cargarDatos()">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Actualizar</span>
+                </button>
+                <a href="/dashboard" class="wallet-action-btn">
+                    <i class="fa-solid fa-map"></i>
+                    <span>Ver Rutas</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div class="wallet-card">
+            <div class="wallet-historial-title">
+                <i class="fa-solid fa-clock-rotate-left" style="margin-right:6px;"></i>
+                Últimas transacciones
+            </div>
+            <div id="historial-lista">
+                <div style="text-align:center;padding:20px;color:var(--text-muted);">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /wallet-container -->
+
+
+    <!-- =============================
+         MODAL 1: ELEGIR MÉTODO DE PAGO
+         ============================= -->
+    <div class="wallet-modal" id="modal-metodo">
+        <div class="wallet-modal-box">
+            <h3>
+                <i class="fa-solid fa-credit-card"></i>
+                Elegir método de recarga
+            </h3>
+
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
+                Selecciona cómo quieres agregar saldo a tu wallet.
+            </p>
+
+            <div class="metodo-pago-grid">
+                <button class="metodo-pago-btn" onclick="seleccionarMetodo('tarjeta')" id="btn-tarjeta">
+                    <i class="fa-solid fa-credit-card"></i>
+                    Tarjeta
+                </button>
+                <button class="metodo-pago-btn" onclick="seleccionarMetodo('paypal')" id="btn-paypal">
+                    <i class="fa-brands fa-paypal"></i>
+                    PayPal
+                </button>
+                <button class="metodo-pago-btn" onclick="seleccionarMetodo('oxxo')" id="btn-oxxo">
+                    <i class="fa-solid fa-store"></i>
+                    OXXO Pay
+                </button>
+                <button class="metodo-pago-btn" onclick="seleccionarMetodo('transferencia')" id="btn-transferencia">
+                    <i class="fa-solid fa-building-columns"></i>
+                    Transferencia
+                </button>
+            </div>
+
+            <div style="display:flex;gap:10px;">
+                <button class="btn-enviar" id="btn-continuar" onclick="abrirModalMonto()" disabled
+                    style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);">
+                    Continuar <i class="fa-solid fa-arrow-right" style="margin-left:6px;"></i>
+                </button>
+                <button class="btn-enviar" onclick="cerrarModal('modal-metodo')"
+                    style="background:var(--bg-body);color:var(--text-secondary);border:1.5px solid var(--border-color);">
+                    Cancelar
+                </button>
+            </div>
+
+            <p style="font-size:0.75rem;color:var(--text-muted);text-align:center;margin-top:12px;">
+                <i class="fa-solid fa-lock" style="margin-right:4px;"></i>
+                Tus datos están protegidos
+            </p>
+        </div>
+    </div>
+
+    <!-- =============================
+         MODAL 2: INGRESAR MONTO
+         ============================= -->
+    <div class="wallet-modal" id="modal-monto">
+        <div class="wallet-modal-box">
+            <h3>
+                <i class="fa-solid fa-money-bill-wave"></i>
+                ¿Cuánto quieres recargar?
+            </h3>
+
+            <!-- Simulación ventana tipo OAuth/PayPal -->
+            <div id="ventana-proveedor" style="background:var(--bg-body);border:1px solid var(--border-color);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <div id="proveedor-icon" style="width:32px;height:32px;border-radius:8px;background:#3b82f6;display:flex;align-items:center;justify-content:center;color:white;font-size:1rem;"></div>
+                    <div>
+                        <div id="proveedor-nombre" style="font-size:0.88rem;font-weight:600;color:var(--text-primary);">Método seleccionado</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">Pago seguro</div>
+                    </div>
+                    <div style="margin-left:auto;">
+                        <i class="fa-solid fa-shield-check" style="color:#10b981;"></i>
+                    </div>
+                </div>
+                <div style="font-size:0.78rem;color:var(--text-muted);border-top:1px solid var(--border-color);padding-top:10px;">
+                    MochisBus solicita autorización para recargar saldo en tu wallet.
+                </div>
+            </div>
+
+            <div class="monto-input-wrapper">
+                <span class="monto-prefix">$</span>
+                <input type="number" class="monto-input" id="input-monto"
+                    placeholder="0.00" min="10" max="5000" step="0.5">
+            </div>
+
+            <div class="montos-rapidos">
+                <button class="monto-rapido" onclick="setMonto(50)">$50</button>
+                <button class="monto-rapido" onclick="setMonto(100)">$100</button>
+                <button class="monto-rapido" onclick="setMonto(200)">$200</button>
+                <button class="monto-rapido" onclick="setMonto(500)">$500</button>
+            </div>
+
+            <div style="display:flex;gap:10px;">
+                <button class="btn-enviar" onclick="procesarRecarga()"
+                    style="background:linear-gradient(135deg,#10b981,#047857);" id="btn-recargar">
+                    <i class="fa-solid fa-check"></i> Confirmar pago
+                </button>
+                <button class="btn-enviar" onclick="cerrarModal('modal-monto')"
+                    style="background:var(--bg-body);color:var(--text-secondary);border:1.5px solid var(--border-color);">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =============================
+         MODAL 3: PAGO NFC
+         ============================= -->
+    <div class="wallet-modal" id="modal-nfc">
+        <div class="wallet-modal-box">
+            <h3>
+                <i class="fa-solid fa-wifi" style="transform:rotate(90deg);display:inline-block;"></i>
+                Pago sin contacto
+            </h3>
+
+            <!-- Estado: esperando NFC -->
+            <div id="nfc-esperando">
+                <div class="nfc-animation-wrapper">
+                    <div class="nfc-ring">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                    </div>
+                    <div class="nfc-text">
+                        <strong>Acerca tu teléfono</strong>
+                        Aproxima tu dispositivo al lector NFC del camión para pagar automáticamente.
+                    </div>
+                </div>
+
+                <div style="background:var(--bg-body);border-radius:10px;padding:12px 16px;margin:8px 0 16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:0.85rem;color:var(--text-muted);">Tarifa por viaje</span>
+                        <span style="font-size:1.05rem;font-weight:700;color:var(--text-primary);">$12.00 MXN</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                        <span style="font-size:0.85rem;color:var(--text-muted);">Tu saldo</span>
+                        <span style="font-size:0.95rem;font-weight:600;color:#10b981;" id="nfc-saldo-preview">$0.00</span>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:10px;">
+                    <button class="btn-enviar" onclick="simularPagoNFC()"
+                        style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);">
+                        <i class="fa-solid fa-bolt"></i> Simular pago NFC
+                    </button>
+                    <button class="btn-enviar" onclick="cerrarModal('modal-nfc')"
+                        style="background:var(--bg-body);color:var(--text-secondary);border:1.5px solid var(--border-color);">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Estado: pago exitoso -->
+            <div id="nfc-success" class="pago-success">
+                <div class="pago-success-icon">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h4>¡Pago exitoso!</h4>
+                <p>Tu tarifa fue descontada correctamente.</p>
+                <div style="font-size:1.4rem;font-weight:700;color:var(--text-primary);" id="monto-pagado">-$12.00</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);">Nuevo saldo: <strong id="saldo-tras-pago" style="color:var(--text-primary);">$0.00</strong></div>
+                <div class="ref" id="ref-nfc">REF: --------</div>
+                <button class="btn-enviar" onclick="cerrarModal('modal-nfc')" style="margin-top:8px;">
+                    <i class="fa-solid fa-check"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        let saldoActual = 0;
+        let metodoSeleccionado = null;
+
+        // ---- CARGAR DATOS ----
+        async function cargarDatos() {
+            try {
+                const res = await fetch('/api/wallet/saldo');
+                const data = await res.json();
+                if (!data.success) return;
+
+                saldoActual = data.saldo;
+                document.getElementById('saldo-numero').textContent = data.saldo.toFixed(2);
+                document.getElementById('nfc-saldo-preview').textContent = '$' + data.saldo.toFixed(2);
+
+                renderHistorial(data.transacciones);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('saldo-numero').textContent = '0.00';
+            }
+        }
+
+        function renderHistorial(transacciones) {
+            const div = document.getElementById('historial-lista');
+            if (!transacciones || !transacciones.length) {
+                div.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.88rem;">Sin movimientos aún.</div>';
+                return;
+            }
+            div.innerHTML = transacciones.map(t => {
+                const esPos = t.tipo === 'recarga' || t.tipo === 'devolucion';
+                const iconMap = { recarga: 'fa-circle-arrow-down', pago: 'fa-circle-arrow-up', devolucion: 'fa-rotate-left' };
+                const fecha = new Date(t.fecha).toLocaleString('es-MX', {
+                    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                });
+                return `<div class="transaccion-item">
+                    <div class="transaccion-icon ${t.tipo}">
+                        <i class="fa-solid ${iconMap[t.tipo] || 'fa-circle'}"></i>
+                    </div>
+                    <div class="transaccion-info">
+                        <div class="transaccion-desc">${t.descripcion || t.tipo}</div>
+                        <div class="transaccion-fecha">${fecha}</div>
+                    </div>
+                    <div class="transaccion-monto ${esPos ? 'positivo' : 'negativo'}">
+                        ${esPos ? '+' : '-'}$${parseFloat(t.monto).toFixed(2)}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ---- MODALES ----
+        function cerrarModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function abrirModalMetodo() {
+            metodoSeleccionado = null;
+            document.querySelectorAll('.metodo-pago-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('btn-continuar').disabled = true;
+            document.getElementById('modal-metodo').classList.add('active');
+        }
+
+        function seleccionarMetodo(metodo) {
+            metodoSeleccionado = metodo;
+            document.querySelectorAll('.metodo-pago-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('btn-' + metodo).classList.add('selected');
+            document.getElementById('btn-continuar').disabled = false;
+        }
+
+        const proveedorInfo = {
+            tarjeta: { icon: '<i class="fa-solid fa-credit-card"></i>', nombre: 'Pago con Tarjeta', bg: '#6366f1' },
+            paypal: { icon: '<i class="fa-brands fa-paypal"></i>', nombre: 'PayPal', bg: '#003087' },
+            oxxo: { icon: '<i class="fa-solid fa-store"></i>', nombre: 'OXXO Pay', bg: '#e4151b' },
+            transferencia: { icon: '<i class="fa-solid fa-building-columns"></i>', nombre: 'Transferencia Bancaria', bg: '#0f766e' }
+        };
+
+        function abrirModalMonto() {
+            cerrarModal('modal-metodo');
+            const info = proveedorInfo[metodoSeleccionado];
+            document.getElementById('proveedor-icon').style.background = info.bg;
+            document.getElementById('proveedor-icon').innerHTML = info.icon;
+            document.getElementById('proveedor-nombre').textContent = info.nombre;
+            document.getElementById('input-monto').value = '';
+            document.getElementById('modal-monto').classList.add('active');
+            setTimeout(() => document.getElementById('input-monto').focus(), 200);
+        }
+
+        function setMonto(val) {
+            document.getElementById('input-monto').value = val;
+            document.getElementById('input-monto').focus();
+        }
+
+        async function procesarRecarga() {
+            const monto = parseFloat(document.getElementById('input-monto').value);
+            if (!monto || monto < 10) return alert('El monto mínimo es $10.00');
+            if (monto > 5000) return alert('El monto máximo es $5,000.00');
+
+            const btn = document.getElementById('btn-recargar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...';
+
+            try {
+                const res = await fetch('/api/wallet/recargar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ monto, metodo: metodoSeleccionado })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    cerrarModal('modal-monto');
+                    await cargarDatos();
+                    showToast(`+$${monto.toFixed(2)} agregado · Ref: ${data.referencia}`);
+                } else {
+                    alert(data.message);
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar pago';
+        }
+
+        // ---- NFC ----
+        function abrirModalNFC() {
+            document.getElementById('nfc-esperando').style.display = 'block';
+            document.getElementById('nfc-success').style.display = 'none';
+            document.getElementById('nfc-saldo-preview').textContent = '$' + saldoActual.toFixed(2);
+            document.getElementById('modal-nfc').classList.add('active');
+        }
+
+        async function simularPagoNFC() {
+            const btn = document.querySelector('#nfc-esperando .btn-enviar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...';
+
+            try {
+                const res = await fetch('/api/wallet/pagar_nfc', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tarifa: 12.00, ruta: 'Ruta en servicio' })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    // Mostrar pantalla de éxito
+                    document.getElementById('nfc-esperando').style.display = 'none';
+                    document.getElementById('nfc-success').style.display = 'flex';
+                    document.getElementById('monto-pagado').textContent = '-$12.00';
+                    document.getElementById('saldo-tras-pago').textContent = '$' + data.nuevo_saldo.toFixed(2);
+                    document.getElementById('ref-nfc').textContent = 'REF: ' + data.referencia;
+                    await cargarDatos();
+                } else {
+                    alert(data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Simular pago NFC';
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Simular pago NFC';
+            }
+        }
+
+        // ---- TOAST ----
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.style.cssText = `
+                position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+                background:linear-gradient(135deg,#10b981,#047857);
+                color:white; padding:12px 22px; border-radius:12px;
+                font-size:0.88rem; font-weight:600; z-index:9999;
+                box-shadow:0 4px 20px rgba(16,185,129,0.4);
+                white-space:nowrap; max-width:90vw; overflow:hidden; text-overflow:ellipsis;
+                animation: slideUp 0.3s ease;
+            `;
+            t.innerHTML = `<i class="fa-solid fa-check-circle" style="margin-right:8px;"></i>${msg}`;
+            document.body.appendChild(t);
+            setTimeout(() => {
+                t.style.transition = 'opacity 0.4s';
+                t.style.opacity = '0';
+                setTimeout(() => t.remove(), 400);
+            }, 3000);
+        }
+
+        // Cerrar modales clickeando fuera
+        document.querySelectorAll('.wallet-modal').forEach(m => {
+            m.addEventListener('click', function(e) {
+                if (e.target === this) this.classList.remove('active');
+            });
+        });
+
+        // Iniciar
+        cargarDatos();
+
+        // Dark mode
+        const toggleDark = document.getElementById('dark-mode-toggle');
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            if(toggleDark) toggleDark.checked = true;
+        }
+        if(toggleDark) toggleDark.addEventListener('change', function(e) {
+            document.body.classList.toggle('dark-mode', e.target.checked);
+            localStorage.setItem('theme', e.target.checked ? 'dark' : 'light');
+        });
+    </script>
+</body>
+</html>

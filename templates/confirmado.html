@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuenta Confirmada - MochisBus</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="login-page">
+    <div class="login-container" style="text-align:center;">
+        <div style="width:72px;height:72px;background:linear-gradient(135deg,#10b981,#047857);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:popIn 0.5s cubic-bezier(0.34,1.56,0.64,1);">
+            <i class="fa-solid fa-check" style="font-size:2rem;color:white;"></i>
+        </div>
+        <h2 class="brand-title">¡Cuenta confirmada!</h2>
+        <p class="subtitle" style="margin-bottom:2rem;">Tu correo fue verificado correctamente. Ya puedes iniciar sesión.</p>
+        <a href="/" class="login-button" style="display:block;text-decoration:none;">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> IR AL LOGIN
+        </a>
+    </div>
+    <style>
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</body>
+</html>

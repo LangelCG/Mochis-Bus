@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - MochisBus</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: var(--bg-body); color: var(--text-primary); }
+        .page-header {
+            background: var(--header-bg);
+            padding: 0 24px;
+            height: 60px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--sidebar-border);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .page-header-title {
+            display: flex; align-items: center; gap: 12px;
+            font-weight: 700; font-size: 1.1rem; color: white;
+        }
+        .page-header-title i { color: #60a5fa; }
+        .btn-back {
+            display: flex; align-items: center; gap: 8px;
+            color: #94a3b8; font-size: 0.88rem; font-weight: 600;
+            text-decoration: none; padding: 8px 14px; border-radius: 8px;
+            border: 1px solid #374151; transition: all 0.2s;
+        }
+        .btn-back:hover { background: rgba(255,255,255,0.08); color: white; }
+        .card h2 i { font-size: 1rem; }
+        .section-label {
+            font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.8px; color: var(--text-muted); margin: 20px 0 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-header">
+        <div class="page-header-title">
+            <i class="fa-solid fa-shield-halved"></i>
+            Panel de Administración
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+            <div class="theme-switch-wrapper">
+                <i class="fa-solid fa-sun" style="color:#94a3b8;font-size:0.85rem;"></i>
+                <label class="switch theme-switch">
+                    <input type="checkbox" id="dark-mode-toggle">
+                    <span class="slider round"></span>
+                </label>
+                <i class="fa-solid fa-moon" style="color:#94a3b8;font-size:0.85rem;"></i>
+            </div>
+            <a href="/logout" class="btn-back" style="color:#fc8181;border-color:#fc8181;"
+               onmouseover="this.style.background='#fc8181';this.style.color='white'"
+               onmouseout="this.style.background='transparent';this.style.color='#fc8181'">
+                <i class="fa-solid fa-right-from-bracket"></i> Salir
+            </a>
+        </div>
+    </div>
+
+    <div class="admin-container">
+
+        <!-- CARD: CREAR/EDITAR RUTA -->
+        <div class="card">
+            <h2 id="titulo-form">
+                <i class="fa-solid fa-map-location-dot"></i> Crear Nueva Ruta
+            </h2>
+            <form id="form-ruta">
+                <input type="hidden" id="ruta_id">
+
+                <div class="input-group">
+                    <label>Nombre de la Ruta</label>
+                    <input type="text" id="nombre_ruta" placeholder="Ej: Circuito Sur" required>
+                </div>
+
+                <div class="input-group" style="margin-top:12px;">
+                    <label>Color en el Mapa</label>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <input type="color" id="color_ruta" value="#3b82f6" style="width:48px; height:40px; padding:2px; border-radius:8px; border:1.5px solid var(--border-color); cursor:pointer;">
+                        <span style="font-size:0.85rem; color:var(--text-muted);">Color de la línea en el mapa</span>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-top:12px;">
+                    <label>Archivo GeoJSON de Coordenadas <span style="color:var(--text-muted); font-weight:400;">(requerido al crear)</span></label>
+                    <input type="file" id="archivo_json" accept=".json,.geojson">
+                </div>
+
+                <div style="display:flex; gap:10px; margin-top:18px;">
+                    <button type="submit" class="login-button" id="btn-guardar" style="margin-top:0; flex:1;">
+                        <i class="fa-solid fa-floppy-disk"></i> GUARDAR RUTA
+                    </button>
+                    <button type="button" class="login-button" id="btn-cancelar"
+                        style="display:none; margin-top:0; background:linear-gradient(135deg,#6b7280,#4b5563); flex:1;"
+                        onclick="cancelarEdicion()">
+                        <i class="fa-solid fa-xmark"></i> CANCELAR
+                    </button>
+                </div>
+            </form>
+
+            <div class="section-label" style="margin-top:28px;">Rutas existentes</div>
+            <div id="lista-rutas-existentes">
+                <div style="padding:16px; text-align:center; color:var(--text-muted);">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Cargando...
+                </div>
+            </div>
+        </div>
+
+        <!-- CARD: GESTIÓN CHOFERES -->
+        <div class="card">
+            <h2><i class="fa-solid fa-users-gear"></i> Gestión de Choferes</h2>
+            <div class="input-group">
+                <label>Buscar usuario</label>
+                <div class="input-wrapper" style="position:relative;">
+                    <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);"></i>
+                    <input type="text" id="buscador-usuarios"
+                        placeholder="Escribe mínimo 2 caracteres..."
+                        onkeyup="buscarUsuarios()"
+                        style="padding-left:40px; width:100%;">
+                </div>
+            </div>
+            <div id="lista-usuarios"></div>
+        </div>
+
+    </div>
+
+    <script>
+        let rutasCache = [];
+
+        document.getElementById('form-ruta').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('ruta_id').value;
+            const nombre = document.getElementById('nombre_ruta').value;
+            const color = document.getElementById('color_ruta').value;
+            const file = document.getElementById('archivo_json').files[0];
+
+            let coordenadas = null;
+            if (file) {
+                const text = await file.text();
+                const json = JSON.parse(text);
+                coordenadas = json.features[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            } else if (!id) {
+                return alert("Para crear una ruta nueva, sube el archivo GeoJSON.");
+            }
+
+            const url = id ? '/api/admin/editar_ruta' : '/api/admin/crear_ruta';
+            const payload = { id, nombre, descripcion: 'Ruta urbana', color, coordenadas };
+            const btn = document.getElementById('btn-guardar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> GUARDAR RUTA';
+
+            if (data.success) {
+                cancelarEdicion();
+                cargarRutas();
+            } else { alert(data.message); }
+        });
+
+        async function cargarRutas() {
+            const res = await fetch('/api/admin/get_rutas');
+            rutasCache = await res.json();
+            const div = document.getElementById('lista-rutas-existentes');
+
+            if (!rutasCache.length) {
+                div.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);">Sin rutas aún.</div>';
+                return;
+            }
+
+            div.innerHTML = rutasCache.map(r => `
+                <div class="ruta-admin-item">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="width:14px;height:14px;background:${r.color};border-radius:50%;flex-shrink:0;"></span>
+                        <b style="color:var(--text-primary);">${r.nombre}</b>
+                    </div>
+                    <div>
+                        <button onclick="prepararEdicion(${r.id})" class="btn-icon btn-edit" title="Editar">
+                            <i class="fa-solid fa-pencil"></i>
+                        </button>
+                        <button onclick="borrarRuta(${r.id})" class="btn-icon btn-delete" title="Borrar">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`).join('');
+        }
+
+        function prepararEdicion(id) {
+            const ruta = rutasCache.find(r => r.id === id);
+            if (!ruta) return;
+            document.getElementById('ruta_id').value = ruta.id;
+            document.getElementById('nombre_ruta').value = ruta.nombre;
+            document.getElementById('color_ruta').value = ruta.color;
+            document.getElementById('titulo-form').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Editando Ruta';
+            document.getElementById('btn-guardar').innerHTML = '<i class="fa-solid fa-rotate"></i> ACTUALIZAR RUTA';
+            document.getElementById('btn-cancelar').style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelarEdicion() {
+            document.getElementById('form-ruta').reset();
+            document.getElementById('ruta_id').value = '';
+            document.getElementById('titulo-form').innerHTML = '<i class="fa-solid fa-map-location-dot"></i> Crear Nueva Ruta';
+            document.getElementById('btn-guardar').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> GUARDAR RUTA';
+            document.getElementById('btn-cancelar').style.display = 'none';
+        }
+
+        async function borrarRuta(id) {
+            if (!confirm("¿Confirmas borrar esta ruta? Esta acción no se puede deshacer.")) return;
+            const res = await fetch('/api/admin/borrar_ruta', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            const data = await res.json();
+            if (data.success) cargarRutas();
+        }
+
+        let buscarTimer;
+        async function buscarUsuarios() {
+            const query = document.getElementById('buscador-usuarios').value;
+            if (query.length < 2) { document.getElementById('lista-usuarios').innerHTML = ''; return; }
+            clearTimeout(buscarTimer);
+            buscarTimer = setTimeout(async () => {
+                const res = await fetch('/api/admin/buscar_usuarios', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const usuarios = await res.json();
+                const div = document.getElementById('lista-usuarios');
+                if (!usuarios.length) {
+                    div.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.88rem;">Sin resultados.</div>';
+                    return;
+                }
+                div.innerHTML = usuarios.map(u => {
+                    let opts = '<option value="">-- Pasajero --</option>';
+                    rutasCache.forEach(r => {
+                        opts += `<option value="${r.nombre}" ${u.ruta_asignada === r.nombre ? 'selected' : ''}>${r.nombre}</option>`;
+                    });
+                    return `<div class="user-item">
+                        <div>
+                            <b>${u.username}</b><br>
+                            <small>${u.email}</small>
+                        </div>
+                        <select onchange="asignarChofer(${u.id}, this.value)">${opts}</select>
+                    </div>`;
+                }).join('');
+            }, 300);
+        }
+
+        async function asignarChofer(uid, ruta) {
+            const res = await fetch('/api/admin/asignar_chofer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid, ruta })
+            });
+            const data = await res.json();
+            if (data.success) {
+                const msg = ruta ? `Asignado a ${ruta}` : 'Rol cambiado a Pasajero';
+                // Toast simple
+                showToast(msg);
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:10px 20px;border-radius:10px;font-size:0.88rem;font-weight:600;z-index:9999;box-shadow:0 4px 14px rgba(0,0,0,0.2);transition:opacity 0.3s;';
+            t.innerHTML = `<i class="fa-solid fa-check" style="margin-right:6px;"></i>${msg}`;
+            document.body.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
+        }
+
+        cargarRutas();
+
+        // Dark mode
+        const toggleDark = document.getElementById('dark-mode-toggle');
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            if(toggleDark) toggleDark.checked = true;
+        }
+        if(toggleDark) toggleDark.addEventListener('change', function(e) {
+            document.body.classList.toggle('dark-mode', e.target.checked);
+            localStorage.setItem('theme', e.target.checked ? 'dark' : 'light');
+        });
+    </script>
+</body>
+</html>

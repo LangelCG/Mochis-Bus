@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dashboard - MochisBus</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* ---- BARRA DE BÚSQUEDA EN HEADER ---- */
+        .header-search {
+            flex: 1;
+            max-width: 420px;
+            margin: 0 16px;
+        }
+
+        .search-bar-box {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            border: 1.5px solid rgba(255,255,255,0.15);
+            overflow: visible;
+            transition: border-color 0.2s, background 0.2s;
+            position: relative;
+        }
+
+        .search-bar-box:focus-within {
+            background: rgba(255,255,255,0.15);
+            border-color: #60a5fa;
+        }
+
+        .search-bar-icon {
+            padding: 0 10px;
+            color: #94a3b8;
+            font-size: 0.88rem;
+            flex-shrink: 0;
+        }
+
+        #search-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 0.88rem;
+            padding: 9px 4px;
+            background: transparent;
+            color: #ffffff;
+            font-family: 'Segoe UI', sans-serif;
+            min-width: 0;
+        }
+
+        #search-input::placeholder { color: #64748b; }
+
+        #btn-buscar {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            padding: 9px 14px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: background 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        #btn-buscar:hover { background: #2563eb; }
+        #btn-buscar:disabled { background: #475569; cursor: not-allowed; }
+
+        /* Dropdown de resultados */
+        #search-results {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #1e2328;
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+            display: none;
+            border: 1px solid #2d3748;
+            z-index: 3000;
+            max-height: 65vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        body:not(.dark-mode) #search-results {
+            background: white;
+            border-color: #e2e8f0;
+        }
+
+        .search-results-header {
+            padding: 10px 14px 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            border-bottom: 1px solid #2d3748;
+        }
+
+        body:not(.dark-mode) .search-results-header { border-color: #f1f5f9; }
+
+        /* Items de lugares (para desambiguación) */
+        .lugar-item {
+            padding: 11px 14px;
+            border-bottom: 1px solid #2d3748;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        body:not(.dark-mode) .lugar-item { border-color: #f1f5f9; color: #1a1a2e; }
+        .lugar-item:last-child { border-bottom: none; }
+        .lugar-item:hover { background: rgba(59,130,246,0.12); }
+
+        .lugar-item-icon {
+            color: #ef4444;
+            font-size: 0.9rem;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .lugar-item-nombre {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            line-height: 1.3;
+        }
+
+        body:not(.dark-mode) .lugar-item-nombre { color: #1a1a2e; }
+
+        .lugar-item-dir {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* Items de rutas */
+        .ruta-resultado {
+            padding: 12px 14px;
+            border-bottom: 1px solid #2d3748;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        body:not(.dark-mode) .ruta-resultado { border-color: #f1f5f9; }
+        .ruta-resultado:last-child { border-bottom: none; }
+        .ruta-resultado:hover { background: rgba(59,130,246,0.12); }
+
+        .ruta-res-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .ruta-res-badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .ruta-res-nombre {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        body:not(.dark-mode) .ruta-res-nombre { color: #1a1a2e; }
+
+        .ruta-res-info {
+            font-size: 0.78rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ruta-res-tip {
+            font-size: 0.76rem;
+            color: #10b981;
+            font-weight: 600;
+            margin-top: 3px;
+        }
+
+        .search-no-results {
+            padding: 18px 14px;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+
+        .search-no-results i {
+            display: block;
+            font-size: 1.3rem;
+            margin-bottom: 6px;
+            color: #475569;
+        }
+
+        /* back btn header */
+        .header-left { cursor: pointer; }
+
+        /* Botones flotantes */
+        .btn-gps-center {
+            position: absolute; bottom: 80px; right: 20px; z-index: 1000;
+            background-color: white; border: none; border-radius: 50%; width: 50px; height: 50px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor: pointer; display: flex;
+            align-items: center; justify-content: center; font-size: 1.4rem; color: #333;
+            transition: all 0.2s ease;
+        }
+        .btn-gps-center:hover { transform: scale(1.1); color: #3b82f6; }
+        .btn-feedback {
+            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+            background-color: #1e2328; border: none; border-radius: 50%; width: 50px; height: 50px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor: pointer; display: flex;
+            align-items: center; justify-content: center; font-size: 1.3rem; color: white;
+            transition: all 0.2s ease;
+        }
+        .btn-feedback:hover { background-color: #3b82f6; transform: scale(1.1); }
+        body.dark-mode .btn-gps-center { background-color: #1a1d24; color: #e2e8f0; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-left">
+            <button id="menu-toggle-btn" onclick="event.stopPropagation()"><i class="fa-solid fa-bars"></i></button>
+            <div class="header-logo" style="margin-left:10px;">
+                <i class="fa-solid fa-bus"></i> <span>MochisBus</span>
+            </div>
+        </div>
+
+        <!-- BARRA DE BÚSQUEDA EN EL HEADER -->
+        <div class="header-search">
+            <div class="search-bar-box">
+                <span class="search-bar-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" id="search-input"
+                    placeholder="¿A dónde quieres ir?"
+                    autocomplete="off" spellcheck="false"
+                    onkeydown="if(event.key==='Enter') buscarDestino()">
+                <button id="btn-buscar" onclick="buscarDestino()">
+                    <i class="fa-solid fa-route"></i>
+                </button>
+                <!-- Dropdown de resultados pegado a la barra -->
+                <div id="search-results"></div>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <div class="theme-switch-wrapper">
+                <i class="fa-solid fa-sun" style="color:#94a3b8; font-size:0.85rem;"></i>
+                <label class="switch theme-switch">
+                    <input type="checkbox" id="dark-mode-toggle">
+                    <span class="slider round"></span>
+                </label>
+                <i class="fa-solid fa-moon" style="color:#94a3b8; font-size:0.85rem;"></i>
+            </div>
+            <div class="user-info-display" id="user-info-box">
+                <span class="user-name-txt">{{ username }}</span>
+                <span class="user-role-txt">{{ role }}</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div id="mapa"></div>
+
+        <button class="btn-gps-center" onclick="centrarEnMi()" title="Mi Ubicación">
+            <i class="fa-solid fa-crosshairs"></i>
+        </button>
+        <button class="btn-feedback" onclick="abrirFeedback()" title="Reportar">
+            <i class="fa-solid fa-comment-dots"></i>
+        </button>
+
+        <div class="sidebar" id="sidebar-menu">
+            <div class="sidebar-header">
+                <h3><i class="fa-solid fa-map-location-dot" style="margin-right:8px; color:#60a5fa;"></i>Rutas Disponibles</h3>
+            </div>
+            <ul class="ruta-list" id="lista-rutas-dinamica">
+                <li style="padding:24px; text-align:center; color:#64748b;">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size:1.2rem; margin-bottom:8px; display:block;"></i>
+                    Cargando rutas...
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <a href="/wallet" class="btn-wallet-sidebar">
+                    <i class="fa-solid fa-wallet"></i> Mi Wallet
+                </a>
+                <a href="/logout" class="btn-logout">
+                    <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Feedback -->
+    <div id="feedback-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="cerrarFeedback()"><i class="fa-solid fa-xmark"></i></span>
+            <h3><i class="fa-solid fa-comment-dots" style="color:#3b82f6; margin-right:8px;"></i>Reportar Problema</h3>
+            <label class="form-label">Categoría</label>
+            <select id="feedback-reason" class="form-select">
+                <option value="Errores en la ruta">Errores en la ruta</option>
+                <option value="Error en la ubicación">Error en la ubicación</option>
+                <option value="Error sitio web">Error sitio web</option>
+                <option value="Reporte Chofer">Reporte Camión / Chofer</option>
+                <option value="Otro">Otro</option>
+            </select>
+            <label class="form-label">Comentario</label>
+            <textarea id="txt-feedback" rows="4" class="form-textarea" placeholder="Describe el problema con detalle..."></textarea>
+            <button class="btn-enviar" onclick="enviarReporte()">
+                <i class="fa-solid fa-paper-plane"></i> ENVIAR REPORTE
+            </button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // =============================================
+        // BOUNDS DE LOS MOCHIS — mapa bloqueado
+        // =============================================
+        const MOCHIS_BOUNDS = L.latLngBounds(
+            L.latLng(25.68, -109.12),  // SW
+            L.latLng(25.92, -108.82)   // NE
+        );
+        const MOCHIS_CENTER = [25.793, -108.995];
+
+        // --- TEMA ---
+        const toggleSwitch = document.getElementById('dark-mode-toggle');
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            toggleSwitch.checked = true;
+        }
+        toggleSwitch.addEventListener('change', function(e) {
+            document.body.classList.toggle('dark-mode', e.target.checked);
+            localStorage.setItem('theme', e.target.checked ? 'dark' : 'light');
+        });
+
+        // --- SIDEBAR ---
+        const sidebar = document.getElementById('sidebar-menu');
+        document.getElementById('menu-toggle-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            sidebar.classList.toggle('active');
+        });
+        document.getElementById('mapa').addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            cerrarResultados();
+        });
+
+        // Cerrar resultados al click fuera
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-bar-box')) cerrarResultados();
+        });
+
+        // =============================================
+        // MAPA — bloqueado a Los Mochis
+        // =============================================
+        var map = L.map('mapa', {
+            center: MOCHIS_CENTER,
+            zoom: 14,
+            zoomControl: false,
+            minZoom: 12,          // no puede alejarse más de esto
+            maxZoom: 19,
+            maxBounds: MOCHIS_BOUNDS,
+            maxBoundsViscosity: 1.0   // rebote duro al llegar al límite
+        });
+
+        L.control.zoom({ position: 'topleft' }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        var rutasCargadas = {};
+        var lineaActual = null;
+        var rutaActiva = null;
+        var intervaloRastreo = null;
+        var marcadoresBus = {};
+        var miFlecha = null;
+        var miPosicion = null;      // {lat, lon} del usuario
+        var marcadorDestino = null;
+        var lineasBusqueda = [];
+        var _calculandoRutas = false;  // flag para no cerrar resultados al mover mapa
+
+        var iconoBus    = L.icon({ iconUrl: '/static/camion.png', iconSize: [40, 30], iconAnchor: [20, 15] });
+        var iconoFlecha = L.icon({ iconUrl: '/static/flecha.png', iconSize: [20, 30], iconAnchor: [10, 15] });
+        var iconoDestino = L.divIcon({
+            className: '',
+            html: '<div style="background:#ef4444;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);"></div>',
+            iconAnchor: [8, 8]
+        });
+
+        // =============================================
+        // CARGAR RUTAS
+        // =============================================
+        async function cargarRutasDesdeBD() {
+            try {
+                const res = await fetch('/api/admin/get_rutas');
+                const rutas = await res.json();
+                const lista = document.getElementById('lista-rutas-dinamica');
+                if (rutas.length === 0) {
+                    lista.innerHTML = '<li style="padding:24px;text-align:center;color:#64748b;">Sin rutas disponibles.</li>';
+                    return;
+                }
+                lista.innerHTML = '';
+                rutas.forEach(r => {
+                    rutasCargadas[r.nombre] = { coordenadas: r.coordenadas, color: r.color, id: r.id };
+                    const li = document.createElement('li');
+                    li.className = 'ruta-item';
+                    li.onclick = () => seleccionarRuta(r.nombre, r.color);
+                    li.innerHTML = `
+                        <div class="ruta-icon" style="background-color:${r.color};">
+                            <i class="fa-solid fa-bus"></i>
+                        </div>
+                        <div class="ruta-info"><h4>${r.nombre}</h4></div>`;
+                    lista.appendChild(li);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function seleccionarRuta(nombre, colorHex) {
+            if (window.innerWidth <= 768) sidebar.classList.remove('active');
+            const datos = rutasCargadas[nombre];
+            if (!datos || !datos.coordenadas.length) return alert("Ruta sin coordenadas.");
+            limpiarBusqueda();
+            // Al seleccionar ruta del sidebar también limpiamos el destino
+            if (marcadorDestino) { map.removeLayer(marcadorDestino); marcadorDestino = null; }
+            if (lineaActual) map.removeLayer(lineaActual);
+            Object.values(marcadoresBus).forEach(m => map.removeLayer(m));
+            marcadoresBus = {};
+            lineaActual = L.polyline(datos.coordenadas, { color: colorHex || '#3b82f6', weight: 6, opacity: 0.85 }).addTo(map);
+            map.fitBounds(lineaActual.getBounds(), { padding: [50, 50] });
+            rutaActiva = nombre;
+            if (intervaloRastreo) clearInterval(intervaloRastreo);
+            actualizarPosiciones();
+            intervaloRastreo = setInterval(actualizarPosiciones, 3000);
+        }
+
+        // =============================================
+        // BÚSQUEDA — con desambiguación de lugares
+        // =============================================
+        async function buscarDestino() {
+            const query = document.getElementById('search-input').value.trim();
+            if (!query) return;
+
+            const btn = document.getElementById('btn-buscar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            try {
+                // Buscar hasta 5 resultados para mostrar opciones si hay varios
+                const url = `https://nominatim.openstreetmap.org/search?` +
+                    `q=${encodeURIComponent(query + ', Los Mochis, Sinaloa, México')}` +
+                    `&format=json&limit=50` +
+                    `&bounded=1` +
+                    `&viewbox=-109.12,25.68,-108.82,25.92` +
+                    `&addressdetails=1`;
+
+                const res = await fetch(url, {
+                    headers: { 'Accept-Language': 'es', 'User-Agent': 'MochisBus/1.0' }
+                });
+                const lugares = await res.json();
+
+                // Filtrar solo los que estén dentro del bounding box de Mochis
+                const lugaresValidos = lugares.filter(l => {
+                    const lat = parseFloat(l.lat), lon = parseFloat(l.lon);
+                    return lat >= 25.68 && lat <= 25.92 && lon >= -109.12 && lon <= -108.82;
+                });
+
+                if (!lugaresValidos.length) {
+                    mostrarNoResultados(`No encontré "${query}" en Los Mochis.`);
+                    return;
+                }
+
+                if (lugaresValidos.length === 1) {
+                    // Solo un resultado — calcular rutas directo
+                    calcularYMostrarRutas(lugaresValidos[0]);
+                } else {
+                    // Varios resultados — mostrar para que el usuario elija
+                    mostrarOpcionesLugar(lugaresValidos, query);
+                }
+
+            } catch (e) {
+                console.error(e);
+                mostrarNoResultados('Error al buscar. Verifica tu conexión.');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-route"></i>';
+        }
+
+        // Cache de lugares para desambiguación
+        let _lugaresCache = [];
+
+        // Muestra lista de lugares para desambiguar
+        function mostrarOpcionesLugar(lugares, query) {
+            _lugaresCache = lugares;
+            const div = document.getElementById('search-results');
+            let html = `<div class="search-results-header">
+                <i class="fa-solid fa-location-dot" style="color:#ef4444;margin-right:4px;"></i>
+                ${lugares.length} resultado${lugares.length > 1 ? 's' : ''} — elige uno:
+            </div>`;
+
+            lugares.forEach((l, idx) => {
+                const partes = l.display_name.split(',');
+                const nombre = partes[0].trim();
+                const dir    = partes.slice(1, 4).join(',').trim();
+                html += `<div class="lugar-item" onclick="elegirLugar(${idx})">
+                    <i class="fa-solid fa-location-dot lugar-item-icon"></i>
+                    <div>
+                        <div class="lugar-item-nombre">${nombre}</div>
+                        <div class="lugar-item-dir">${dir}</div>
+                    </div>
+                </div>`;
+            });
+
+            div.innerHTML = html;
+            div.style.display = 'block';
+        }
+
+        // Llamado al elegir un lugar de la lista
+        function elegirLugar(idx) {
+            const lugar = _lugaresCache[idx];
+            if (!lugar) return;
+            // Limpiar el dropdown primero y luego mostrar rutas con pequeño delay
+            // para que el click del mapa no interfiera
+            const div = document.getElementById('search-results');
+            div.innerHTML = '<div class="search-no-results"><i class="fa-solid fa-spinner fa-spin"></i> Calculando rutas...</div>';
+            div.style.display = 'block';
+            setTimeout(() => calcularYMostrarRutas(lugar), 50);
+        }
+
+        // Calcula rutas cercanas y las muestra
+        function calcularYMostrarRutas(lugar) {
+            const destLat = parseFloat(lugar.lat);
+            const destLon = parseFloat(lugar.lon);
+
+            // Punto de origen: ubicación del usuario si la tiene, si no el centro del mapa
+            const origenLat = miPosicion ? miPosicion.lat : MOCHIS_CENTER[0];
+            const origenLon = miPosicion ? miPosicion.lon : MOCHIS_CENTER[1];
+
+            const rutasCercanas = calcularRutasCercanas(destLat, destLon);
+
+            if (!rutasCercanas.length) {
+                mostrarNoResultados('No hay rutas disponibles cerca de ese destino.');
+                return;
+            }
+
+            // Mostrar rutas PRIMERO antes de mover el mapa
+            mostrarResultadosBusqueda(rutasCercanas, destLat, destLon, lugar, origenLat, origenLon);
+
+            // Marcador y movimiento de mapa DESPUÉS con pequeño delay
+            // para que el evento click del mapa no cierre el dropdown recién pintado
+            setTimeout(() => {
+                if (marcadorDestino) map.removeLayer(marcadorDestino);
+                const nombreCorto = lugar.display_name.split(',').slice(0, 2).join(',').trim();
+                marcadorDestino = L.marker([destLat, destLon], { icon: iconoDestino })
+                    .addTo(map)
+                    .bindPopup(`<b>📍 Tu destino</b><br>${nombreCorto}`)
+                    .openPopup();
+                map.setView([destLat, destLon], 15);
+            }, 100);
+        }
+
+        // Haversine — distancia en metros
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 +
+                      Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function distanciaPuntoARuta(lat, lon, coordenadas) {
+            let minDist = Infinity, puntoMasCercano = null;
+            for (const [rLat, rLon] of coordenadas) {
+                const d = haversine(lat, lon, rLat, rLon);
+                if (d < minDist) { minDist = d; puntoMasCercano = [rLat, rLon]; }
+            }
+            return { distancia: minDist, punto: puntoMasCercano };
+        }
+
+        function calcularRutasCercanas(lat, lon) {
+            return Object.entries(rutasCargadas)
+                .filter(([, d]) => d.coordenadas && d.coordenadas.length)
+                .map(([nombre, datos]) => {
+                    const { distancia, punto } = distanciaPuntoARuta(lat, lon, datos.coordenadas);
+                    return { nombre, color: datos.color, distancia, punto };
+                })
+                .sort((a, b) => a.distancia - b.distancia);
+        }
+
+        function mostrarResultadosBusqueda(rutas, destLat, destLon, lugar, origenLat, origenLon) {
+            const div = document.getElementById('search-results');
+            const nombreLugar = lugar.display_name.split(',').slice(0, 2).join(',').trim();
+            const emojis = ['🥇', '🥈', '🥉'];
+            const getEmoji = (i) => i < 3 ? emojis[i] : (i+1)+'°';
+
+            let html = `<div class="search-results-header" style="display:flex;justify-content:space-between;align-items:center;">
+                <span><i class="fa-solid fa-location-dot" style="color:#ef4444;margin-right:4px;"></i>${nombreLugar}</span>
+                <span onclick="cerrarResultados()" style="cursor:pointer;color:#64748b;font-size:1rem;padding:0 4px;"
+                    onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#64748b'">
+                    <i class="fa-solid fa-xmark"></i>
+                </span>
+            </div>`;
+
+            rutas.forEach((r, i) => {
+                const distTexto = r.distancia < 1000
+                    ? `${Math.round(r.distancia)} m`
+                    : `${(r.distancia / 1000).toFixed(1)} km`;
+
+                // Distancia desde la ubicación del usuario hasta el punto más cercano de la ruta
+                const distOrigen = miPosicion
+                    ? `${Math.round(haversine(origenLat, origenLon, r.punto[0], r.punto[1]))} m desde ti`
+                    : null;
+
+                html += `<div class="ruta-resultado"
+                    onclick="seleccionarRutaBusqueda('${r.nombre}','${r.color}',${destLat},${destLon},[${r.punto}])">
+                    <div class="ruta-res-header">
+                        <span class="ruta-res-badge" style="background:${r.color}">${getEmoji(i)}</span>
+                        <span class="ruta-res-nombre">${r.nombre}</span>
+                    </div>
+                    <div class="ruta-res-info">
+                        <i class="fa-solid fa-arrows-left-right" style="color:#3b82f6;font-size:0.72rem;"></i>
+                        Pasa a <b>${distTexto}</b> de tu destino
+                        ${distOrigen ? `&nbsp;·&nbsp;<i class="fa-solid fa-person-walking" style="color:#10b981;font-size:0.72rem;"></i> ${distOrigen}` : ''}
+                    </div>
+                    ${i === 0 ? '<div class="ruta-res-tip"><i class="fa-solid fa-star" style="margin-right:3px;"></i>Ruta más cercana</div>' : ''}
+                </div>`;
+            });
+
+            div.innerHTML = html;
+            div.style.display = 'block';
+        }
+
+        function mostrarNoResultados(msg) {
+            const div = document.getElementById('search-results');
+            div.innerHTML = `<div class="search-no-results">
+                <i class="fa-solid fa-circle-exclamation"></i>${msg}
+            </div>`;
+            div.style.display = 'block';
+        }
+
+        function cerrarResultados() {
+            document.getElementById('search-results').style.display = 'none';
+        }
+
+        function limpiarBusqueda() {
+            // Solo limpia las líneas — el marcador de destino se mantiene
+            // hasta que el usuario busque algo nuevo
+            lineasBusqueda.forEach(l => map.removeLayer(l));
+            lineasBusqueda = [];
+        }
+
+        function seleccionarRutaBusqueda(nombre, color, destLat, destLon, puntoCercano) {
+            cerrarResultados();
+            const datos = rutasCargadas[nombre];
+            if (!datos) return;
+            limpiarBusqueda();
+            if (lineaActual) map.removeLayer(lineaActual);
+            Object.values(marcadoresBus).forEach(m => map.removeLayer(m));
+            marcadoresBus = {};
+
+            const linea = L.polyline(datos.coordenadas, { color, weight: 7, opacity: 0.9 }).addTo(map);
+            lineasBusqueda.push(linea);
+
+            // Línea punteada del punto más cercano al destino
+            const lineaConexion = L.polyline([puntoCercano, [destLat, destLon]], {
+                color: '#ef4444', weight: 2.5, opacity: 0.85, dashArray: '6,5'
+            }).addTo(map);
+            lineasBusqueda.push(lineaConexion);
+
+            const bounds = L.latLngBounds(datos.coordenadas).extend([destLat, destLon]);
+            map.fitBounds(bounds, { padding: [60, 60] });
+
+            rutaActiva = nombre;
+            lineaActual = linea;
+            if (intervaloRastreo) clearInterval(intervaloRastreo);
+            actualizarPosiciones();
+            intervaloRastreo = setInterval(actualizarPosiciones, 3000);
+        }
+
+        // =============================================
+        // RASTREO EN TIEMPO REAL
+        // =============================================
+        async function actualizarPosiciones() {
+            if (!rutaActiva) return;
+            try {
+                const res = await fetch(`/api/obtener_choferes?ruta=${encodeURIComponent(rutaActiva)}`);
+                const choferes = await res.json();
+                const vistos = choferes.map(c => c.username);
+                choferes.forEach((c, i) => {
+                    if (marcadoresBus[c.username]) marcadoresBus[c.username].setLatLng([c.lat, c.lon]);
+                    else marcadoresBus[c.username] = L.marker([c.lat, c.lon], { icon: iconoBus })
+                        .addTo(map).bindPopup(`<b>Camión ${i + 1}</b>`);
+                });
+                Object.keys(marcadoresBus).forEach(u => {
+                    if (!vistos.includes(u)) { map.removeLayer(marcadoresBus[u]); delete marcadoresBus[u]; }
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        // =============================================
+        // GPS DEL USUARIO
+        // =============================================
+        function iniciarMiGPS() {
+            if (!navigator.geolocation) return;
+            navigator.geolocation.watchPosition((pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                miPosicion = { lat, lon };  // guardar para búsquedas
+
+                if (miFlecha) miFlecha.setLatLng([lat, lon]);
+                else miFlecha = L.marker([lat, lon], { icon: iconoFlecha, zIndexOffset: 1000 })
+                    .addTo(map).bindPopup('<b>Tú estás aquí</b>');
+            }, (err) => {
+                console.warn('GPS no disponible:', err.message);
+            }, { enableHighAccuracy: true, timeout: 15000 });
+        }
+
+        function centrarEnMi() {
+            if (miFlecha) map.setView(miFlecha.getLatLng(), 16);
+            else alert("Buscando tu ubicación...");
+        }
+
+        // =============================================
+        // FEEDBACK
+        // =============================================
+        function abrirFeedback() { document.getElementById('feedback-modal').style.display = 'block'; }
+        function cerrarFeedback() { document.getElementById('feedback-modal').style.display = 'none'; }
+
+        async function enviarReporte() {
+            const reason = document.getElementById('feedback-reason').value;
+            const txt = document.getElementById('txt-feedback').value.trim();
+            if (!txt) return alert("Escribe un comentario antes de enviar.");
+            const btn = document.querySelector('.btn-enviar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+            try {
+                await fetch('/api/enviar_feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario: '{{ username }}', mensaje: `[${reason}] - ${txt}` })
+                });
+                cerrarFeedback();
+                document.getElementById('txt-feedback').value = '';
+                alert("¡Reporte enviado!");
+            } catch (e) { alert("Error al enviar."); }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> ENVIAR REPORTE';
+        }
+
+        iniciarMiGPS();
+        cargarRutasDesdeBD();
+    </script>
+</body>
+</html>

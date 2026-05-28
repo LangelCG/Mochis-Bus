@@ -1,0 +1,12 @@
+# Entornos virtuales y caché
+venv/
+__pycache__/
+
+# Variables de entorno (aquí están tus credenciales locales)
+.env
+
+# Bases de datos locales
+database.db
+
+# Ejecutables y binarios
+cloudflared.exe.exe
